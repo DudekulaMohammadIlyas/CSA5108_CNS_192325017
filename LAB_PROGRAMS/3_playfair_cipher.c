@@ -2,160 +2,113 @@
 #include <string.h>
 #include <ctype.h>
 
-void generateKeyTable(const char *key, char keyTable[5][5]) {
-    int used[26] = {0};
-    used['J' - 'A'] = 1;
+char mat[5][5];
+
+void generateMatrix(char *key) {
+    int vis[26] = {0};
+    vis['J' - 'A'] = 1;
     int r = 0, c = 0;
 
     for (int i = 0; key[i] != '\0'; i++) {
-        if (isalpha((unsigned char)key[i])) {
-            char ch = toupper((unsigned char)key[i]);
-            if (ch == 'J') ch = 'I';
-            if (!used[ch - 'A']) {
-                used[ch - 'A'] = 1;
-                keyTable[r][c] = ch;
-                c++;
-                if (c == 5) {
-                    c = 0;
-                    r++;
-                }
-            }
+        char ch = toupper(key[i]);
+        if (ch == 'J') ch = 'I';
+        if (isalpha(ch) && !vis[ch - 'A']) {
+            vis[ch - 'A'] = 1;
+            mat[r][c++] = ch;
+            if (c == 5) { c = 0; r++; }
         }
     }
 
     for (int i = 0; i < 26; i++) {
-        if (!used[i]) {
-            keyTable[r][c] = (char)('A' + i);
-            c++;
-            if (c == 5) {
-                c = 0;
-                r++;
-            }
+        if (!vis[i]) {
+            mat[r][c++] = 'A' + i;
+            if (c == 5) { c = 0; r++; }
         }
     }
 }
 
-void findPosition(char keyTable[5][5], char ch, int *row, int *col) {
+void findPos(char ch, int *r, int *c) {
     if (ch == 'J') ch = 'I';
-    for (int r = 0; r < 5; r++) {
-        for (int c = 0; c < 5; c++) {
-            if (keyTable[r][c] == ch) {
-                *row = r;
-                *col = c;
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 5; j++) {
+            if (mat[i][j] == ch) {
+                *r = i;
+                *c = j;
                 return;
             }
         }
     }
 }
 
-void prepareText(const char *input, char *output) {
-    char temp[1000];
-    int tempLen = 0;
-    for (int i = 0; input[i] != '\0'; i++) {
-        if (isalpha((unsigned char)input[i])) {
-            char ch = toupper((unsigned char)input[i]);
-            if (ch == 'J') ch = 'I';
-            temp[tempLen++] = ch;
+void processText(char *in, char *out) {
+    int len = 0;
+    for (int i = 0; in[i] != '\0'; i++) {
+        if (isalpha(in[i])) {
+            char ch = toupper(in[i]);
+            out[len++] = (ch == 'J') ? 'I' : ch;
         }
     }
-    temp[tempLen] = '\0';
 
-    int outLen = 0;
-    for (int i = 0; i < tempLen; i++) {
-        output[outLen++] = temp[i];
-        if (i + 1 < tempLen) {
-            if (temp[i] == temp[i + 1]) {
-                output[outLen++] = 'X';
-            } else {
-                output[outLen++] = temp[++i];
+    for (int i = 0; i < len; i += 2) {
+        if (i == len - 1) {
+            out[len++] = 'X';
+            break;
+        }
+        if (out[i] == out[i + 1]) {
+            for (int j = len; j > i + 1; j--) {
+                out[j] = out[j - 1];
             }
-        } else {
-            output[outLen++] = 'X';
+            out[i + 1] = 'X';
+            len++;
         }
     }
-    output[outLen] = '\0';
+    out[len] = '\0';
 }
 
-void encryptPlayfair(char keyTable[5][5], char *text) {
-    int len = strlen(text);
-    for (int i = 0; i < len; i += 2) {
+void encrypt(char *str) {
+    for (int i = 0; str[i] != '\0'; i += 2) {
         int r1, c1, r2, c2;
-        findPosition(keyTable, text[i], &r1, &c1);
-        findPosition(keyTable, text[i + 1], &r2, &c2);
+        findPos(str[i], &r1, &c1);
+        findPos(str[i + 1], &r2, &c2);
 
         if (r1 == r2) {
-            text[i] = keyTable[r1][(c1 + 1) % 5];
-            text[i + 1] = keyTable[r2][(c2 + 1) % 5];
+            str[i] = mat[r1][(c1 + 1) % 5];
+            str[i + 1] = mat[r2][(c2 + 1) % 5];
         } else if (c1 == c2) {
-            text[i] = keyTable[(r1 + 1) % 5][c1];
-            text[i + 1] = keyTable[(r2 + 1) % 5][c2];
+            str[i] = mat[(r1 + 1) % 5][c1];
+            str[i + 1] = mat[(r2 + 1) % 5][c2];
         } else {
-            text[i] = keyTable[r1][c2];
-            text[i + 1] = keyTable[r2][c1];
-        }
-    }
-}
-
-void decryptPlayfair(char keyTable[5][5], char *text) {
-    int len = strlen(text);
-    for (int i = 0; i < len; i += 2) {
-        int r1, c1, r2, c2;
-        findPosition(keyTable, text[i], &r1, &c1);
-        findPosition(keyTable, text[i + 1], &r2, &c2);
-
-        if (r1 == r2) {
-            text[i] = keyTable[r1][(c1 + 4) % 5];
-            text[i + 1] = keyTable[r2][(c2 + 4) % 5];
-        } else if (c1 == c2) {
-            text[i] = keyTable[(r1 + 4) % 5][c1];
-            text[i + 1] = keyTable[(r2 + 4) % 5][c2];
-        } else {
-            text[i] = keyTable[r1][c2];
-            text[i + 1] = keyTable[r2][c1];
+            str[i] = mat[r1][c2];
+            str[i + 1] = mat[r2][c1];
         }
     }
 }
 
 int main() {
-    char key[100];
-    char text[500];
-    char keyTable[5][5];
+    char key[50], text[100], formatted[200];
 
     printf("Enter keyword: ");
-    if (fgets(key, sizeof(key), stdin) != NULL) {
-        size_t len = strlen(key);
-        if (len > 0 && key[len - 1] == '\n') {
-            key[len - 1] = '\0';
-        }
-    }
+    scanf("%s", key);
+    getchar();
 
     printf("Enter plaintext: ");
-    if (fgets(text, sizeof(text), stdin) != NULL) {
-        size_t len = strlen(text);
-        if (len > 0 && text[len - 1] == '\n') {
-            text[len - 1] = '\0';
-        }
-    }
+    scanf("%[^\n]", text);
 
-    generateKeyTable(key, keyTable);
+    generateMatrix(key);
 
-    printf("\n5x5 Key Matrix:\n");
-    for (int r = 0; r < 5; r++) {
-        for (int c = 0; c < 5; c++) {
-            printf("%c ", keyTable[r][c]);
+    printf("\nKey Matrix (5x5):\n");
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 5; j++) {
+            printf("%c ", mat[i][j]);
         }
         printf("\n");
     }
-    printf("\n");
 
-    prepareText(text, text);
-    printf("Prepared Text: %s\n", text);
+    processText(text, formatted);
+    printf("Formatted text: %s\n", formatted);
 
-    encryptPlayfair(keyTable, text);
-    printf("Encrypted Text: %s\n", text);
-
-    decryptPlayfair(keyTable, text);
-    printf("Decrypted Text: %s\n", text);
+    encrypt(formatted);
+    printf("Encrypted text: %s\n", formatted);
 
     return 0;
 }
